@@ -2,6 +2,7 @@
 
 from ultralytics.utils import SETTINGS, TESTS_RUNNING
 from ultralytics.utils.torch_utils import model_info_for_loggers
+from pathlib import Path
 
 try:
     assert not TESTS_RUNNING  # do not log pytest
@@ -14,6 +15,13 @@ try:
 except (ImportError, AssertionError):
     wb = None
 
+
+def log_yaml(path, name):
+    path = Path(path)
+    if path.exists():
+        art = wb.Artifact(name=name, type="config")
+        art.add_file(str(path))
+        wb.run.log_artifact(art)
 
 def _custom_table(x, y, classes, title="Precision Recall Curve", x_title="Recall", y_title="Precision"):
     """Create and log a custom metric visualization to wandb.plot.pr_curve.
@@ -131,8 +139,21 @@ def on_pretrain_routine_start(trainer):
         wb.init(
             project=str(trainer.args.project).replace("/", "-") if trainer.args.project else "Ultralytics",
             name=str(trainer.args.name).replace("/", "-"),
+            tags=str(trainer.args.name).split("_"),
             config=vars(trainer.args),
         )
+
+        # -----------------------
+        # LOG YAML CONFIG FILES
+        # -----------------------
+
+        # Dataset YAML (data.yaml)
+        if hasattr(trainer.args, "data"):
+            log_yaml(trainer.args.data, f"{wb.run.id}_data_yaml")
+
+        # Model YAML (e.g. yolov8n.yaml)
+        if hasattr(trainer.model, "yaml_file"):
+            log_yaml(trainer.model.yaml_file, f"{wb.run.id}_model_yaml")
 
 
 def on_fit_epoch_end(trainer):
@@ -141,7 +162,18 @@ def on_fit_epoch_end(trainer):
     _log_plots(trainer.validator.plots, step=trainer.epoch + 1)
     if trainer.epoch == 0:
         wb.run.log(model_info_for_loggers(trainer), step=trainer.epoch + 1)
-    wb.run.log(trainer.metrics, step=trainer.epoch + 1, commit=True)  # commit forces sync
+    # wb.run.log(trainer.metrics, step=trainer.epoch + 1, commit=True)  # commit forces sync
+    val_metrics = {}
+
+    for k, v in trainer.metrics.items():
+        if k.startswith("metrics/"):
+            # metrics/mAP50(B) → val/mAP50
+            new_key = k.replace("metrics/", "val/").replace("(B)", "")
+            val_metrics[new_key] = v
+        else:
+            val_metrics[k] = v  # keep fitness etc.
+
+    wb.run.log(val_metrics, step=trainer.epoch + 1, commit=True)
 
 
 def on_train_epoch_end(trainer):
@@ -173,6 +205,40 @@ def on_train_end(trainer):
                 x_title=x_title,
                 y_title=y_title,
             )
+    
+    wb.run.summary["final/train_loss"] = float(trainer.tloss.mean())
+    wb.run.summary["best/fitness"] = trainer.best_fitness
+
+    best = trainer.validator.metrics
+
+    wb.run.summary.update({
+        "best/mAP50": best.box.map50,
+        "best/mAP50-95": best.box.map,
+        "best/precision": best.box.mp,
+        "best/recall": best.box.mr,
+    })
+
+
+    # --------------------
+    # TEST SET EVALUATION
+    # --------------------
+    if hasattr(trainer.args, "data"):
+        from ultralytics import YOLO
+
+        model = YOLO(trainer.best)
+        test_metrics = model.val(
+            data=trainer.args.data,
+            split="test",
+            verbose=False
+        )
+
+        wb.run.log({
+            "test/mAP50": test_metrics.box.map50,
+            "test/mAP50-95": test_metrics.box.map,
+            "test/precision": test_metrics.box.mp,
+            "test/recall": test_metrics.box.mr,
+        })
+    
     wb.run.finish()  # required or run continues on dashboard
 
 
