@@ -3,6 +3,75 @@
 from ultralytics.utils import SETTINGS, TESTS_RUNNING
 from ultralytics.utils.torch_utils import model_info_for_loggers
 from pathlib import Path
+from collections import defaultdict
+
+
+
+from pathlib import Path
+from collections import defaultdict
+import yaml
+
+def load_dataset_yaml(yaml_path):
+    with open(yaml_path, "r") as f:
+        return yaml.safe_load(f)
+
+
+def normalize_to_list(x):
+    if x is None:
+        return []
+    if isinstance(x, list):
+        return x
+    return [x]
+
+def count_instances_in_dir(images_dir, class_names):
+    """
+    Count YOLO instances in one images directory.
+    """
+    counts = defaultdict(int)
+
+    labels_dir = Path(str(images_dir).replace("/images", "/labels"))
+    if not labels_dir.exists():
+        return counts
+
+    for label_file in labels_dir.glob("*.txt"):
+        with open(label_file, "r") as f:
+            for line in f:
+                cls_id = int(line.split()[0])
+                counts[class_names[cls_id]] += 1
+
+    return counts
+
+def empty_image_stats(images_dir):
+    images_dir = Path(images_dir)
+    labels_dir = Path(str(images_dir).replace("/images", "/labels"))
+
+    image_files = list(images_dir.glob("*.jpg")) + list(images_dir.glob("*.png"))
+    total_images = len(image_files)
+
+    empty_images = 0
+
+    for img in image_files:
+        label_file = labels_dir / f"{img.stem}.txt"
+        if not label_file.exists():
+            empty_images += 1
+        else:
+            if label_file.stat().st_size == 0:
+                empty_images += 1
+
+    return total_images, empty_images
+
+def infer_source(path_str):
+    path_str = str(path_str).lower()
+    if "coco" in path_str:
+        return "COCO"
+    if "open_images" in path_str or "oid" in path_str:
+        return "OpenImages"
+    if "zollner" in path_str:
+        return "Zollner"
+    if "open_sensor" in path_str:
+        return "OpenSensorRail"
+    return "Other"
+
 
 try:
     assert not TESTS_RUNNING  # do not log pytest
@@ -154,6 +223,132 @@ def on_pretrain_routine_start(trainer):
         # Model YAML (e.g. yolov8n.yaml)
         if hasattr(trainer.model, "yaml_file"):
             log_yaml(trainer.model.yaml_file, f"{wb.run.id}_model_yaml")
+        
+        data = load_dataset_yaml(trainer.args.data)
+        root = Path(data["path"])
+        class_names = data["names"]
+
+        splits = ["train", "val", "test"]
+
+        # Final structure:
+        # counts[split][class] = total_instances
+        counts = {s: defaultdict(int) for s in splits}
+
+        for split in splits:
+            split_entries = normalize_to_list(data.get(split))
+
+            for rel_path in split_entries:
+                images_dir = root / rel_path
+                if not images_dir.exists():
+                    print(f"[WARN] Missing dir: {images_dir}")
+                    continue
+
+                dir_counts = count_instances_in_dir(images_dir, class_names)
+
+                for cls, n in dir_counts.items():
+                    counts[split][cls] += n
+
+        instance_table = wb.Table(
+            columns=["split", "class", "num_instances"]
+        )
+
+        for split, cls_counts in counts.items():
+            for cls in class_names.values():
+                instance_table.add_data(
+                    split,
+                    cls,
+                    cls_counts.get(cls, 0)
+                )
+
+        wb.log({"dataset/class_instance_counts": instance_table})
+
+        for split, cls_counts in counts.items():
+            total = sum(cls_counts.values())
+            wb.run.summary[f"dataset/{split}_total_instances"] = total
+
+            for cls, n in cls_counts.items():
+                wb.run.summary[f"dataset/{split}_{cls}_instances"] = n
+
+
+        for split in counts:
+            train_count = counts[split].get("train", 0)
+            total = sum(counts[split].values())
+            ratio = train_count / max(total, 1)
+
+            wb.run.summary[f"dataset/{split}_train_ratio"] = ratio
+
+        empty_stats = {}
+
+        for split in splits:
+            total_imgs = 0
+            empty_imgs = 0
+
+            for rel_path in normalize_to_list(data.get(split)):
+                images_dir = root / rel_path
+                if not images_dir.exists():
+                    continue
+
+                t, e = empty_image_stats(images_dir)
+                total_imgs += t
+                empty_imgs += e
+
+            ratio = empty_imgs / max(total_imgs, 1)
+            empty_stats[split] = (total_imgs, empty_imgs, ratio)
+
+            wb.run.summary[f"dataset/{split}_empty_images"] = empty_imgs
+            wb.run.summary[f"dataset/{split}_total_images"] = total_imgs
+            wb.run.summary[f"dataset/{split}_empty_ratio"] = ratio
+
+        for split in splits:
+            total_objects = sum(counts[split].values())
+            train_objects = counts[split].get("train", 0)
+
+            ratio = train_objects / max(total_objects, 1)
+
+            wb.run.summary[f"dataset/{split}_train_objects"] = train_objects
+            wb.run.summary[f"dataset/{split}_total_objects"] = total_objects
+            wb.run.summary[f"dataset/{split}_train_object_ratio"] = ratio
+
+        source_stats = {
+            split: defaultdict(lambda: defaultdict(int)) for split in splits
+        }
+
+        for split in splits:
+            for rel_path in normalize_to_list(data.get(split)):
+                images_dir = root / rel_path
+                if not images_dir.exists():
+                    continue
+
+                source = infer_source(rel_path)
+                labels_dir = Path(str(images_dir).replace("/images", "/labels"))
+
+                if not labels_dir.exists():
+                    continue
+
+                for label_file in labels_dir.glob("*.txt"):
+                    with open(label_file) as f:
+                        for line in f:
+                            cls_id = int(line.split()[0])
+                            cls_name = class_names[cls_id]
+                            source_stats[split][source][cls_name] += 1
+
+        source_table = wb.Table(
+            columns=["split", "source", "class", "num_instances"]
+        )
+
+        for split, src_data in source_stats.items():
+            for source, cls_data in src_data.items():
+                for cls, n in cls_data.items():
+                    source_table.add_data(split, source, cls, n)
+
+        wb.log({"dataset/source_class_distribution": source_table})
+
+        for split, src_data in source_stats.items():
+            for source, cls_data in src_data.items():
+                total = sum(cls_data.values())
+                wb.run.summary[f"dataset/{split}_{source}_objects"] = total
+
+
 
 
 def on_fit_epoch_end(trainer):
