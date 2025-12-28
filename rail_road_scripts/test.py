@@ -15,11 +15,12 @@ print("WANDB_API_KEY loaded:", wandb_api_key)
 #Initialize your Weights & Biases environment
 wandb.login(key=wandb_api_key)
 SETTINGS["wandb"] = True
+run_name = "pre-trained_yolov8s_zollner_test"
 
 run = wandb.init(
     project="zollner project",
-    name="pre-trained_yolov8s_zollner_test",
-    job_type="validation",
+    name=run_name,
+    job_type="test",
 )
 run.tags = run.name.split("_")
 
@@ -34,7 +35,7 @@ results = model.val(
     imgsz=640,
     patience=300,
     project="zollner project",
-    name="pre-trained_yolov8s_zollner_test",
+    name=run_name,
     )
 
 metrics = results.results_dict  # <-- key line
@@ -145,5 +146,35 @@ comparison_table.add_data(
 )
 
 wandb.log({"mAP_vs_trainAP": comparison_table})
+
+# ============================
+# Per-class TP / FP / FN / TN
+# ============================
+
+cm = results.confusion_matrix.matrix  # shape: (C+1, C+1)
+class_names = results.names
+num_classes = len(class_names)
+total = cm.sum()
+
+confusion_table = wandb.Table(
+    columns=["class", "TP", "FP", "FN", "TN"]
+)
+
+for class_id in range(num_classes):
+    TP = int(cm[class_id, class_id])
+    FP = int(cm[:, class_id].sum() - TP)
+    FN = int(cm[class_id, :].sum() - TP)
+    TN = int(total - TP - FP - FN)
+
+    confusion_table.add_data(
+        class_names[class_id],
+        TP,
+        FP,
+        FN,
+        TN,
+    )
+
+wandb.log({"per_class_confusion": confusion_table})
+
 
 wandb.finish()
