@@ -15,7 +15,6 @@ def load_dataset_yaml(yaml_path):
     with open(yaml_path, "r") as f:
         return yaml.safe_load(f)
 
-
 def normalize_to_list(x):
     if x is None:
         return []
@@ -36,8 +35,18 @@ def count_instances_in_dir(images_dir, class_names):
     for label_file in labels_dir.glob("*.txt"):
         with open(label_file, "r") as f:
             for line in f:
-                cls_id = int(line.split()[0])
-                counts[class_names[cls_id]] += 1
+                try:
+                    cls_id = int(line.split()[0])
+                    counts[class_names[cls_id]] += 1
+                except KeyError:
+                    print(
+                        f"[CLASS ID NOT IN DATASET] "
+                        f"file={label_file}, "
+                        # f"line={line_num}, "
+                        f"class_id={cls_id}"
+                    )
+                except (ValueError, IndexError):
+                    print(f"error processing line in {label_file}: {line}")
 
     return counts
 
