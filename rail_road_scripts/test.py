@@ -4,6 +4,7 @@ import wandb
 from dotenv import load_dotenv
 import os
 from ultralytics.utils import SETTINGS
+from ultralytics.utils.callbacks.wb import log_yaml
 
 # Load environment variables from .env
 load_dotenv()
@@ -15,7 +16,7 @@ print("WANDB_API_KEY loaded:", wandb_api_key)
 #Initialize your Weights & Biases environment
 wandb.login(key=wandb_api_key)
 SETTINGS["wandb"] = True
-run_name = "pre-trained_yolov8s_zollner_test"
+run_name = "single_cls_test"
 
 run = wandb.init(
     project="zollner project",
@@ -26,17 +27,23 @@ run.tags = run.name.split("_")
 
 # wandb.init(project="ultralytics", name="coco_8 forked_repo")
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-model = YOLO('yolov8s.pt')
+model = YOLO('/home/mal/ultralytics/rail_road_scripts/zollner project/single_class_train/weights/best.pt')
 
-
+#UPDATE HERE
+# data_yaml = '/home/mal/coco_projects/ultralytics/yolov8/ultralytics/ultralytics/cfg/datasets/zollner_train_single_cls.yaml'
+data_yaml = '/home/mal/ultralytics/ultralytics/cfg/datasets/zollner_train_single_cls.yaml'
 results = model.val(
-    data='/home/mal/coco_projects/ultralytics/yolov8/ultralytics/ultralytics/cfg/datasets/zollner_train.yaml',
+    data=data_yaml,
     split="test",
+    cache=False,     
     imgsz=640,
     patience=300,
     project="zollner project",
     name=run_name,
     )
+
+if results:
+  log_yaml(data_yaml, f"{wandb.run.id}_data_yaml")
 
 metrics = results.results_dict  # <-- key line
 res_keys = results.keys
@@ -47,8 +54,8 @@ summary = results.summary
 # print("res_keys:", res_keys)
 # print("metrics:", metrics)
 print("ap_class_index:", results.ap_class_index)
-print("ap_class_index train:", results.ap_class_index[1])
-P, R, AP50, AP5095 = results.class_result(2)
+print("ap_class_index train:", results.ap_class_index[0])
+P, R, AP50, AP5095 = results.class_result(0)
 
 print("Train class (id=6):")
 print("  Precision :", P)
