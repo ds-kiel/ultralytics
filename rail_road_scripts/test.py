@@ -16,7 +16,7 @@ print("WANDB_API_KEY loaded:", wandb_api_key)
 #Initialize your Weights & Biases environment
 wandb.login(key=wandb_api_key)
 SETTINGS["wandb"] = True
-run_name = "single_cls_test"
+run_name = "pre-trained_yolov8s_zollner_test"
 
 run = wandb.init(
     project="zollner project",
@@ -27,11 +27,11 @@ run.tags = run.name.split("_")
 
 # wandb.init(project="ultralytics", name="coco_8 forked_repo")
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-model = YOLO('/home/mal/ultralytics/rail_road_scripts/zollner project/single_class_train/weights/best.pt')
+model = YOLO('yolov8s.pt')
 
 #UPDATE HERE
 # data_yaml = '/home/mal/coco_projects/ultralytics/yolov8/ultralytics/ultralytics/cfg/datasets/zollner_train_single_cls.yaml'
-data_yaml = '/home/mal/ultralytics/ultralytics/cfg/datasets/zollner_train_single_cls.yaml'
+data_yaml = '/home/mal/ultralytics/ultralytics/cfg/datasets/zollner_test.yaml'
 results = model.val(
     data=data_yaml,
     split="test",
