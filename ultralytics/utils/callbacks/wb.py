@@ -254,19 +254,19 @@ def on_pretrain_routine_start(trainer):
 
                 dir_counts = count_instances_in_dir(images_dir, class_names)
 
-                for cls, n in dir_counts.items():
-                    counts[split][cls] += n
+                for clss, n in dir_counts.items():
+                    counts[split][clss] += n
 
         instance_table = wb.Table(
             columns=["split", "class", "num_instances"]
         )
 
         for split, cls_counts in counts.items():
-            for cls in class_names.values():
+            for clss in class_names.values():
                 instance_table.add_data(
                     split,
-                    cls,
-                    cls_counts.get(cls, 0)
+                    clss,
+                    cls_counts.get(clss, 0)
                 )
 
         wb.log({"dataset/class_instance_counts": instance_table})
@@ -275,8 +275,8 @@ def on_pretrain_routine_start(trainer):
             total = sum(cls_counts.values())
             wb.run.summary[f"dataset/{split}_total_instances"] = total
 
-            for cls, n in cls_counts.items():
-                wb.run.summary[f"dataset/{split}_{cls}_instances"] = n
+            for clss, n in cls_counts.items():
+                wb.run.summary[f"dataset/{split}_{clss}_instances"] = n
 
 
         for split in counts:
@@ -347,8 +347,8 @@ def on_pretrain_routine_start(trainer):
 
         for split, src_data in source_stats.items():
             for source, cls_data in src_data.items():
-                for cls, n in cls_data.items():
-                    source_table.add_data(split, source, cls, n)
+                for clss, n in cls_data.items():
+                    source_table.add_data(split, source, clss, n)
 
         wb.log({"dataset/source_class_distribution": source_table})
 
