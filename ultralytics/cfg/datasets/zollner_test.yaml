@@ -7,23 +7,25 @@
 #     └── coco  ← downloads here (20.1 GB)
 
 # Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
-path: /data22/  # dataset root dir
+path: /  # dataset root dir
 train: # coco_laboe/train/images  # train images (relative to 'path') 118287 images
-  - mal/coco/coco/images/train2017/
+  - data22/mal/coco/coco/images/train2017/
+  - data22/datasets/zollner_dataset/paper_data/train/images
   # - mal/open_sensor_rail_data/in_yolo_format/only_trains/images/train/
   # - mal/open_sensor_rail_data/in_yolo_format/train_tracks_bg/images/
-  - datasets/zollner_dataset/paper_data/train/images
-  # - mal/trains_all_roboflow_datasets/Railroad-Car-Detection--13/train/images
+  # - datasets/zollner_dataset/new_data/train/images
+  # # - mal/trains_all_roboflow_datasets/Railroad-Car-Detection--13/train/images
   # - mal/open_images/OIDv6_ToolKit_Download_Open_Images_Support_Yolo_Format/OID/Dataset/train/Train
 val:
-  - mal/coco/coco/images/val2017/
+  - data22/datasets/zollner_dataset/paper_data/val/images
+  # # - mal/coco/coco/images/val2017/
   # - mal/open_sensor_rail_data/in_yolo_format/only_trains/images/val/
-  # - mal/trains_all_roboflow_datasets/Railroad-Car-Detection--13/valid/images
-  - datasets/zollner_dataset/paper_data/val/images
+  # # - mal/trains_all_roboflow_datasets/Railroad-Car-Detection--13/valid/images
+  # - datasets/zollner_dataset/new_data/val/images
   # - mal/open_images/OIDv6_ToolKit_Download_Open_Images_Support_Yolo_Format/OID/Dataset/validation/Train #coco_laboe/val/images # val images (relative to 'path') 5000 images
 test: 
-  # - mal/open_sensor_rail_data/in_yolo_format/only_trains/images/test/  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
-  - datasets/zollner_dataset/paper_data/test/images
+  - data22/datasets/zollner_dataset/paper_data/test/images
+
 # Classes
 names:
   0: person

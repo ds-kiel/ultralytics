@@ -10,9 +10,11 @@
 path: /  # dataset root dir
 train: 
   - data22/datasets/zollner_dataset/paper_data/train/images
+  - data22/mal/coco/coco/images/train2017_binary/
   # - mal/open_sensor_rail_data/in_yolo_format/train_tracks_bg/images/
 val:
   - data22/datasets/zollner_dataset/paper_data/val/images
+  - data22/mal/coco/coco/images/val2017_binary/
 test: 
   - data22/datasets/zollner_dataset/paper_data/test/images
 # Classes
