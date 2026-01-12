@@ -276,8 +276,11 @@ def on_pretrain_routine_start(trainer):
             wb.run.summary[f"dataset/{split}_total_instances"] = total
 
             for clss, n in cls_counts.items():
+                wb.log({f"dataset/{split}/class_instances/{clss}": n})
                 wb.run.summary[f"dataset/{split}_{clss}_instances"] = n
 
+
+        overall_counts = defaultdict(int)
 
         for split in counts:
             train_count = counts[split].get("train", 0)
@@ -286,6 +289,12 @@ def on_pretrain_routine_start(trainer):
 
             wb.run.summary[f"dataset/{split}_train_ratio"] = ratio
 
+            for clss, n in counts[split].items():
+                overall_counts[clss] += n
+
+        for clss, n in overall_counts.items():
+            wb.log({f"dataset/all/class_instances/{clss}": n})
+            
         empty_stats = {}
 
         for split in splits:
