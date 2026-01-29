@@ -4,7 +4,7 @@ from ultralytics.utils import SETTINGS, TESTS_RUNNING
 from ultralytics.utils.torch_utils import model_info_for_loggers
 from pathlib import Path
 from collections import defaultdict
-
+import re
 
 
 from pathlib import Path
@@ -61,13 +61,21 @@ def empty_image_stats(images_dir):
 
     for img in image_files:
         label_file = labels_dir / f"{img.stem}.txt"
+
+        # Case 1: label file does not exist
         if not label_file.exists():
             empty_images += 1
-        else:
-            if label_file.stat().st_size == 0:
-                empty_images += 1
+            continue
+
+        # Read label file
+        content = label_file.read_text().strip()
+
+        # Case 2: file is empty or has no numeric character
+        if not content or not re.search(r"\d", content):
+            empty_images += 1
 
     return total_images, empty_images
+
 
 def infer_source(path_str):
     path_str = str(path_str).lower()
