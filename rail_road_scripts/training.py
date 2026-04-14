@@ -31,14 +31,14 @@ model = YOLO('yolov8s.pt')
 # add_wandb_callback(model, enable_model_checkpointing=True)
 
 results = model.train(
-    data='/home/mal/ultralytics/ultralytics/cfg/datasets/zollner_train_single_cls.yaml',
+    data='/home/mal/ultralytics/ultralytics/cfg/datasets/zollner_train.yaml',
     epochs=300, 
     imgsz=640,
     patience=100,
     device=['0','1'],
     project="zollner project",
     single_cls=False,
-    name="coco_zollner_single_cls_train",
+    name="scratch_COCO_TWIST",
     )
 
 wandb.finish()
