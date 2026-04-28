@@ -18,12 +18,6 @@ print("WANDB_API_KEY loaded:", wandb_api_key)
 wandb.login(key=wandb_api_key)
 SETTINGS["wandb"] = True
 
-wandb.init(
-    project="zollner project",
-    id="yie1ugs4",   # 👈 your run ID
-    resume="must"
-)
-
 
 # wandb.init(project="ultralytics", name="coco_8 forked_repo")
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -43,9 +37,9 @@ results = model.train(
     patience=100,
     resume=True,
     device=['1'],
-    # project="zollner project",
+    project="zollner project",
     # single_cls=False,
-    # name="scratch_COCO_TWIST4_cont",
+    name="scratch_COCO_TWIST4_cont",
     )
 
 # wandb.finish()
