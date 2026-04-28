@@ -18,27 +18,34 @@ print("WANDB_API_KEY loaded:", wandb_api_key)
 wandb.login(key=wandb_api_key)
 SETTINGS["wandb"] = True
 
+wandb.init(
+    project="zollner project",
+    id="yie1ugs4",   # 👈 your run ID
+    resume="must"
+)
+
 
 # wandb.init(project="ultralytics", name="coco_8 forked_repo")
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 # model = YOLO('/home/mal/coco_projects/ultralytics/yolov8/ultralytics/ultralytics/cfg/models/v8/yolov8.yaml')
 # model.model.args["scale"] = "s"
 
 # model= YOLO("/home/mal/ultralytics/rail_road_scripts/zollner project/scratch_COCO_OS_OI_Zollner_train3/weights/last.pt")
 # model = YOLO("/home/mal/coco_projects/ultralytics/yolov8/ultralytics/train_scratch_coco_OS_Zol_BG_cargo_3004/weights/best.pt") 
-model = YOLO('yolov8s.pt')
+model = YOLO('/home/mal/ultralytics/rail_road_scripts/zollner project/scratch_COCO_TWIST4/weights/last_60.pt')
 # add_wandb_callback(model, enable_model_checkpointing=True)
 
 results = model.train(
     data='/home/mal/ultralytics/ultralytics/cfg/datasets/zollner_train.yaml',
-    epochs=300, 
+    epochs=600, 
     imgsz=640,
     patience=100,
-    device=['0','1'],
-    project="zollner project",
-    single_cls=False,
-    name="scratch_COCO_TWIST",
+    resume=True,
+    device=['1'],
+    # project="zollner project",
+    # single_cls=False,
+    # name="scratch_COCO_TWIST4_cont",
     )
 
-wandb.finish()
+# wandb.finish()
