@@ -35,11 +35,11 @@ results = model.train(
     epochs=600, 
     imgsz=640,
     patience=100,
-    resume=True,
+    resume=False,
     device=['1'],
     project="zollner project",
     # single_cls=False,
-    name="scratch_COCO_TWIST4_cont",
+    name="scratch_COCO_TWIST_convergence",
     )
 
 # wandb.finish()
